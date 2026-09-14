@@ -1,0 +1,44 @@
+@startuml VerifyPickupFlow
+start
+:Payment Confirmed\n(Order status=NEW);
+
+if (Admin verifies\nPUT /orders/{id}/verify) then (order status != NEW)
+  :409 InvalidOrderStateException;
+  stop
+else (order status == NEW)
+  :Order status=VERIFIED, VerifiedAt=now;
+endif
+
+split
+  :Admin picks up\nPUT /orders/{id}/pickup;
+  if (order status == VERIFIED?) then (no)
+    :409 InvalidOrderStateException;
+    stop
+  else (yes)
+  endif
+  :CommitSaleAsync\n(internal/sales/commit);
+  note right
+    Idempotent via ProcessedEvents(orderId) —
+    a retried call is a safe no-op, not a
+    duplicate Sale.
+  end note
+  :Order status=COMPLETED, CompletedAt=now;
+  note right
+    Pickup and completion are ONE call —
+    there is no separate "complete" step.
+  end note
+  :End (COMPLETED);
+  stop
+split again
+  :Admin cancels, or\nstale-order job (SYSTEM);
+  note right
+    Doctor CANNOT cancel from VERIFIED —
+    only from NEW (see other branch).
+  end note
+  :ReleaseReservationAsync\n(internal/reservations/{id}/release);
+  :Order status=CANCELLED,\nCancelledBy=ADMIN or SYSTEM;
+  :End (CANCELLED);
+  stop
+end split
+
+@enduml

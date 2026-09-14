@@ -1,0 +1,36 @@
+@startuml ScheduledJobsFlow
+partition "Stock Reservation Expiry Job" {
+  start
+  :Poll every IntervalMinutes\n(default 15);
+  :Query PaymentIntents where\nstatus=CREATED and older than PaymentWindowMinutes\n(default 15 min);
+  if (PaymentIntent still CREATED\npast PaymentWindowMinutes?) then (no)
+    :(nothing to do — loop back to poll);
+  else (yes)
+    :Release stock reservation\n(internal/reservations/{id}/release);
+    :PaymentIntent status=EXPIRED;
+  endif
+  note right
+    Per-item try/catch — one failed
+    reservation doesn't stop the batch.
+  end note
+  stop
+}
+
+partition "Stale Order Auto-Cancel Job" {
+  start
+  :Poll every IntervalMinutes\n(default 15);
+  :Query Orders where\n(status=NEW and CreatedAt older than ThresholdHours)\nor (status=VERIFIED and VerifiedAt older than ThresholdHours)\n(default 24h);
+  if (NEW past ThresholdHours from CreatedAt?\nOR VERIFIED past ThresholdHours from VerifiedAt?) then (no)
+    :(nothing to do — loop back to poll);
+  else (yes)
+    :CancelOrderAsync\n(cancelledBy=SYSTEM);
+    :Release stock reservation\n(internal/reservations/{id}/release);
+    :Order status=CANCELLED,\nCancelledBy=SYSTEM;
+  endif
+  note right
+    Per-order try/catch — one failed
+    cancel doesn't stop the batch.
+  end note
+  stop
+}
+@enduml

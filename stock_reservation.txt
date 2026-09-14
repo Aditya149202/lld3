@@ -1,0 +1,19 @@
+@startuml StockReservationExpiryJob
+participant "StockReservationExpiryJob\n(BackgroundService)" as Job
+database OrdersDB as ODB
+participant "PaymentService\n(in-process, via DI scope)" as PS
+participant SupplierInventoryService as SIS
+
+loop every StockReservationExpiryJob:IntervalMinutes (default 15)
+    Job -> ODB : GetExpiredPaymentIntentsAsync(now - PaymentWindowMinutes)\n(default window 15 min)
+    ODB --> Job : expired PaymentIntents (status still CREATED)
+    loop for each expired intent
+        Job -> PS : ExpiredPaymentIntentAsync(paymentIntentId)
+        PS -> ODB : GetByIdAsync(paymentIntentId)
+        note right of PS : No-op if status is no longer CREATED
+        PS -> SIS : POST internal/reservations/{id}/release (X-Internal-Api-Key)
+        SIS --> PS : reservation released, stock restored
+        PS -> ODB : update PaymentIntent status=EXPIRED
+    end
+end
+@enduml

@@ -1,0 +1,72 @@
+@startuml OrderService_ServiceLayer
+title OrderService - Service Layer
+
+interface IOrderService {
+  +GetOrdersAsync(request) : PagedResponse<OrderListItemResponse>
+  +GetOrderByIdAsync(id, requestingDoctorId) : OrderResponse
+  +VerifyOrderAsync(id) : OrderResponse
+  +PickupOrderAsync(id) : OrderResponse
+  +CancelOrderAsync(id, cancelledBy, requestingDoctorId) : OrderResponse
+}
+
+interface IPaymentService {
+  +InitiatePaymentAsync(doctorId, doctorName, request) : PaymentInitiateResponse
+  +ConfirmPaymentAsync(doctorId, doctorName, request) : PaymentStatusResponse
+  +GetPaymentStatusAsync(paymentIntentId, requestingDoctorId) : PaymentStatusResponse
+  +ExpiredPaymentIntentAsync(paymentIntentId) : void
+}
+
+class OrderService {
+}
+
+class PaymentService {
+}
+
+interface IOrderRepository {
+  +AddAsync(order) : void
+  +GetByIdAsync(id) : Order?
+  +GetFilteredAsync(filter, page, size) : (Items, TotalCount)
+  +GetStaleOrdersAsync(newCutoff, verifiedCutoff) : List<Order>
+  +SaveChangesAsync() : void
+}
+
+interface IPaymentIntentRepository {
+  +AddAsync(paymentIntent) : void
+  +GetByIdAsync(id) : PaymentIntent?
+  +GetByRazorpayOrderIdAsync(razorpayOrderId) : PaymentIntent?
+  +GetExpiredPaymentIntentsAsync(cutoff) : List<PaymentIntent>
+  +SaveChangesAsync() : void
+}
+
+interface IPaymentGatewayClient {
+  +CreateOrderAsync(amount, currency, receipt) : PaymentGatewayOrder
+  +VerifySignature(gatewayOrderId, gatewayPaymentId, signature) : bool
+}
+
+interface ISupplierInventoryClient {
+  +CommitSaleAsync(orderId, paymentIntentId, totalAmount) : void
+  +ReserveStockAsync(paymentIntentId, items) : List<(DrugId, DrugName, UnitPrice)>
+  +ReleaseReservationAsync(paymentIntentId) : void
+}
+
+OrderService ..|> IOrderService
+PaymentService ..|> IPaymentService
+
+OrderService --> IOrderRepository
+OrderService --> ISupplierInventoryClient
+
+PaymentService --> IPaymentIntentRepository
+PaymentService --> IOrderRepository
+PaymentService --> ISupplierInventoryClient
+PaymentService --> IPaymentGatewayClient
+
+' -- layout only: force single vertical column --
+IOrderService -[hidden]-> IPaymentService
+IPaymentService -[hidden]-> OrderService
+OrderService -[hidden]-> PaymentService
+PaymentService -[hidden]-> IOrderRepository
+IOrderRepository -[hidden]-> IPaymentIntentRepository
+IPaymentIntentRepository -[hidden]-> IPaymentGatewayClient
+IPaymentGatewayClient -[hidden]-> ISupplierInventoryClient
+
+@enduml

@@ -1,0 +1,59 @@
+@startuml SupplierInventoryService
+title SupplierInventoryService - Domain Model
+
+class Supplier {
+  +int Id
+  +string Name
+  +string ContactInfo
+  +string? Address
+  +bool IsActive
+}
+
+class Drug {
+  +int Id
+  +string Name
+  +decimal Price
+  +int QuantityInStock
+  +bool IsActive
+  +int SupplierId
+}
+
+class StockReservation {
+  +int Id
+  +int PaymentIntentId
+  +int DrugId
+  +int Quantity
+  +string Status
+  +DateTime ReservedAt
+  +DateTime ExpiresAt
+}
+
+class Sale {
+  +int Id
+  +int OrderId
+  +decimal Amount
+  +DateTime SaleDate
+}
+
+class ProcessedEvent {
+  +int OrderId
+  +DateTime ProcessedAt
+}
+
+enum StockReservationStatus {
+  ACTIVE
+  RELEASED
+  COMMITTED
+}
+
+Supplier "1" *-- "many" Drug : Drugs
+Drug "1" *-- "many" StockReservation : StockReservations
+StockReservation ..> StockReservationStatus : Status
+
+note bottom of Sale
+  OrderId / PaymentIntentId reference
+  Order & PaymentIntent entities
+  in OrderService (cross-service)
+end note
+
+@enduml

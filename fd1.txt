@@ -1,0 +1,66 @@
+@startuml PaymentFlow
+start
+:Doctor selects drugs;
+:POST /api/payments/initiate;
+
+if (items.Count == 0?) then (yes)
+  :400 AppValidationException\n("items" required);
+  stop
+else (no)
+endif
+
+:Insert PaymentIntent\n(status=CREATED, placeholder RazorpayOrderId, Amount=0);
+note right
+  Inserted FIRST — a real DB id is needed
+  before calling SupplierInventoryService.
+end note
+
+:Call internal/stock/reserve\n(SupplierInventoryService);
+
+if (reservation result?) then (drug not found)
+  :Update PaymentIntent status=FAILED;
+  :404 NotFoundException;
+  stop
+elseif () then (insufficient stock)
+  :Update PaymentIntent status=FAILED;
+  :409 StockUnavailableException;
+  stop
+elseif () then (invalid request)
+  :Update PaymentIntent status=FAILED;
+  :400 AppValidationException;
+  stop
+else (reserved OK)
+endif
+
+:Create Razorpay order\n(CreateOrderAsync);
+:Update PaymentIntent\n(RazorpayOrderId, Amount, ItemsSnapshot);
+:200 OK — return razorpayOrderId, amount, keyId;
+
+:Doctor completes payment\non Razorpay checkout;
+:POST /api/payments/confirm\n(razorpayOrderId, paymentId, signature);
+
+if (VerifySignature valid?) then (no)
+  :400 InvalidPaymentSignatureException;
+  stop
+else (yes)
+endif
+
+:Lookup PaymentIntent by RazorpayOrderId;
+
+if (PaymentIntent.DoctorId == caller?) then (no)
+  :404 NotFoundException\n(anti-enumeration);
+  stop
+else (yes)
+endif
+
+if (PaymentIntent.Status == CREATED?) then (no — already processed)
+  :Return existing PaymentStatusResponse\n(idempotent no-op, no duplicate Order);
+  stop
+else (yes)
+endif
+
+:Update PaymentIntent status=PAID;
+:Insert Order (status=NEW) + OrderItems;
+:201 Created — Order placed;
+stop
+@enduml

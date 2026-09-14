@@ -1,0 +1,105 @@
+@startuml SupplierInventoryService_ServiceLayer
+title SupplierInventoryService - Service Layer
+
+interface IDrugService {
+  +CreateDrugAsync(request) : DrugResponse
+  +GetAllDrugsAsync(includeInactive) : IEnumerable<DrugResponse>
+  +GetDrugByIdAsync(id, includeInactive) : DrugResponse
+  +UpdateDrugAsync(id, request) : DrugResponse
+  +DeactivateDrugAsync(id) : void
+}
+
+interface ISupplierService {
+  +CreateSupplierAsync(request) : SupplierResponse
+  +GetAllSuppliersAsync() : IEnumerable<SupplierResponse>
+  +GetSupplierByIdAsync(id) : SupplierResponse
+  +UpdateSupplierAsync(id, request) : SupplierResponse
+  +DeactivateSupplierAsync(id) : void
+}
+
+interface IInternalService {
+  +ReserveStockAsync(paymentIntentId, items) : List<(DrugId, DrugName, UnitPrice)>
+  +CommitSaleAsync(orderId, paymentIntentId, amount) : void
+  +ReleaseReservationAsync(paymentIntentId) : void
+}
+
+interface IReportService {
+  +GetSalesReportAsync(from, to) : SalesReportResponse
+}
+
+class DrugService {
+}
+
+class SupplierService {
+}
+
+class InternalService {
+}
+
+class ReportService {
+}
+
+interface IDrugRepository {
+  +AddAsync(drug) : void
+  +GetAllAsync() : IEnumerable<Drug>
+  +GetByIdAsync(id) : Drug?
+  +SaveChangesAsync() : void
+}
+
+interface ISupplierRepository {
+  +AddAsync(supplier) : void
+  +GetAllAsync() : IEnumerable<Supplier>
+  +GetByIdAsync(id) : Supplier?
+  +SaveChangesAsync() : void
+}
+
+interface IStockReservationRepository {
+  +GetActiveByPaymentIntentIdAsync(paymentIntentId) : List<StockReservation>
+  +AddAsync(reservation) : void
+  +SaveChangesAsync() : void
+}
+
+interface ISalesRepository {
+  +AddAsync(sale) : void
+  +GetByDateRangeAsync(from, to) : List<Sale>
+  +SaveChangesAsync() : void
+}
+
+interface IProcessedEventRepository {
+  +ExistsAsync(orderId) : bool
+  +AddAsync(processedEvent) : void
+  +SaveChangesAsync() : void
+}
+
+DrugService ..|> IDrugService
+SupplierService ..|> ISupplierService
+InternalService ..|> IInternalService
+ReportService ..|> IReportService
+
+DrugService --> IDrugRepository
+DrugService --> ISupplierRepository
+
+SupplierService --> ISupplierRepository
+
+InternalService --> IStockReservationRepository
+InternalService --> ISalesRepository
+InternalService --> IProcessedEventRepository
+InternalService --> IDrugRepository
+
+ReportService --> ISalesRepository
+
+' -- layout only: force single vertical column --
+IDrugService -[hidden]-> ISupplierService
+ISupplierService -[hidden]-> IInternalService
+IInternalService -[hidden]-> IReportService
+IReportService -[hidden]-> DrugService
+DrugService -[hidden]-> SupplierService
+SupplierService -[hidden]-> InternalService
+InternalService -[hidden]-> ReportService
+ReportService -[hidden]-> IDrugRepository
+IDrugRepository -[hidden]-> ISupplierRepository
+ISupplierRepository -[hidden]-> IStockReservationRepository
+IStockReservationRepository -[hidden]-> ISalesRepository
+ISalesRepository -[hidden]-> IProcessedEventRepository
+
+@enduml

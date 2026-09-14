@@ -1,0 +1,71 @@
+@startuml OrderService
+title OrderService - Domain Model
+
+class Order {
+  +int Id
+  +int PaymentIntentId
+  +int DoctorId
+  +string DoctorNameSnapshot
+  +string Status
+  +decimal TotalAmount
+  +DateTime CreatedAt
+  +DateTime? VerifiedAt
+  +DateTime? CompletedAt
+  +DateTime? CancelledAt
+  +string? CancelledBy
+}
+
+class OrderItem {
+  +int Id
+  +int OrderId
+  +int DrugId
+  +int Quantity
+  +decimal UnitPriceAtOrder
+}
+
+class PaymentIntent {
+  +int Id
+  +int DoctorId
+  +string RazorpayOrderId
+  +string? RazorpayPaymentId
+  +decimal Amount
+  +string Status
+  +string ItemsSnapshot
+  +DateTime CreatedAt
+  +DateTime UpdatedAt
+}
+
+enum OrderStatus {
+  NEW
+  VERIFIED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentIntentStatus {
+  CREATED
+  PAID
+  FAILED
+  EXPIRED
+}
+
+enum CancelledBy {
+  ADMIN
+  SYSTEM
+  DOCTOR
+}
+
+Order "1" -- "1" PaymentIntent : PaymentIntentId
+Order "1" *-- "many" OrderItem : OrderItems
+
+Order ..> OrderStatus : Status
+Order ..> CancelledBy : CancelledBy
+PaymentIntent ..> PaymentIntentStatus : Status
+
+note right of OrderItem
+  DrugId references Drug entity
+  in SupplierInventoryService
+  (cross-service, no FK)
+end note
+
+@enduml

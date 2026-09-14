@@ -1,0 +1,39 @@
+@startuml UserAuthService
+title UserAuthService - Domain Model
+
+class Role {
+  +int Id
+  +string Name
+}
+
+class User {
+  +int Id
+  +string Name
+  +string Email
+  +string PasswordHash
+  +int RoleId
+  +DateTime CreatedAt
+}
+
+class RefreshToken {
+  +int Id
+  +int UserId
+  +string TokenHash
+  +DateTime IssuedAt
+  +DateTime ExpiresAt
+  +DateTime? RevokedAt
+}
+
+class PasswordResetToken {
+  +int Id
+  +int UserId
+  +string TokenHash
+  +DateTime ExpiresAt
+  +DateTime? UsedAt
+}
+
+Role "1" *-- "many" User : Users
+User "1" *-- "many" RefreshToken : RefreshTokens
+User "1" *-- "many" PasswordResetToken : PasswordResetTokens
+
+@enduml
