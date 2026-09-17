@@ -1,0 +1,30 @@
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+const options = {
+    key: "YOUR_TEST_KEY_ID",
+    amount: 50000,
+    currency: "INR",
+    order_id: "order_xxxxxxxxx",
+
+    handler: function (response) {
+        console.log(response);
+
+        // This is what your real frontend would send
+        fetch("http://localhost:5000/api/payment/verify", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+            })
+        });
+    }
+};
+
+const razorpay = new Razorpay(options);
+razorpay.open();
+</script>
